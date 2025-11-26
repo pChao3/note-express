@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 app.use(express.json());
+app.use(express.static('dist'));
+
 app.use(cors());
 
 let notes = [
@@ -54,13 +56,32 @@ app.post('/api/notes', (req, res) => {
     important: data.important || false,
   };
   notes.push(note);
-  res.json(note);
+
+  res.json({
+    isSaved: true,
+    msg: 'save successed',
+  });
 });
 
 app.delete('/api/notes/:id', (req, res) => {
   const id = req.params.id;
   notes = notes.filter(i => i.id !== id);
-  res.status(204).end();
+  res.status(200).json({ isDeleted: true, msg: 'delete successed' });
+});
+
+app.get('/api/notes/changeId/:id', (req, res) => {
+  const id = req.params.id;
+  notes = notes.map(i => {
+    if (i.id === id) {
+      return {
+        ...i,
+        important: !i.important,
+      };
+    } else {
+      return i;
+    }
+  });
+  res.status(200).json({ status: true, msg: 'makepoint successed' });
 });
 
 app.listen(3000, () => {
