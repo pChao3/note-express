@@ -1,39 +1,27 @@
 const express = require('express');
 const cors = require('cors');
+const Note = require('./models/note.js');
+
 const app = express();
 app.use(express.json());
-app.use(express.static('dist'));
 
 app.use(cors());
 
-let notes = [
-  {
-    id: '1',
-    content: 'HTML is easy',
-    important: true,
-  },
-  {
-    id: '2',
-    content: 'Browser can execute only JavaScript',
-    important: false,
-  },
-  {
-    id: '3',
-    content: 'GET and POST are the most important methods of HTTP protocol',
-    important: true,
-  },
-];
 app.get('/', (req, res) => {
   res.send('<h1>hello world</h1>');
 });
 
+// get all notes
 app.get('/api/notes', (req, res) => {
-  res.json(notes);
+  Note.find({}).then(notes => {
+    res.json(notes);
+  });
 });
 
-app.get('/api/notes/:id', (req, res) => {
+// search tagert note
+app.get('/api/notes/:id', async (req, res) => {
   const id = req.params.id;
-  const item = notes.find(i => i.id === id);
+  const item = await Note.find({ _id: id });
   if (item) {
     res.json(item);
   } else {
@@ -41,46 +29,34 @@ app.get('/api/notes/:id', (req, res) => {
   }
 });
 
-const generateId = () => {
-  const maxId = notes.length > 0 ? Math.max(...notes.map(n => Number(n.id))) : 0;
-  return String(maxId + 1);
-};
-app.post('/api/notes', (req, res) => {
+// add note
+app.post('/api/notes', async (req, res) => {
   const data = req.body;
   if (!data.content) {
     return res.status(400).json({ error: 'content is empty' });
   }
-  const note = {
-    id: generateId(),
-    content: data.content,
-    important: data.important || false,
-  };
-  notes.push(note);
-
+  await Note.create({ content: data.content, important: data.important || false });
   res.json({
     isSaved: true,
     msg: 'save successed',
   });
 });
 
-app.delete('/api/notes/:id', (req, res) => {
+// delete note
+app.delete('/api/notes/:id', async (req, res) => {
   const id = req.params.id;
-  notes = notes.filter(i => i.id !== id);
+  await Note.findByIdAndDelete(id);
   res.status(200).json({ isDeleted: true, msg: 'delete successed' });
 });
 
-app.get('/api/notes/changeId/:id', (req, res) => {
+// update note
+app.put('/api/notes/:id', async (req, res) => {
   const id = req.params.id;
-  notes = notes.map(i => {
-    if (i.id === id) {
-      return {
-        ...i,
-        important: !i.important,
-      };
-    } else {
-      return i;
-    }
-  });
+  const item = await Note.find({ _id: id });
+  console.log('item', item[0]);
+
+  item[0].important = !item[0].important;
+  await Note.findByIdAndUpdate(id, item[0]);
   res.status(200).json({ status: true, msg: 'makepoint successed' });
 });
 
