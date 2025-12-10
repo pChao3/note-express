@@ -21,7 +21,7 @@ app.use('/', users);
 app.use('/api', notes);
 
 // 404 + 统一错误处理要放在最后
-app.use('/', (req, res) => res.status(404).json({ message: 'Not Found' }));
+// app.use('/', (req, res) => res.status(404).json({ message: 'Not Found' }));
 app.use(errorHandler);
 
 module.exports = app;
