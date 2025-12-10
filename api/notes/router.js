@@ -2,6 +2,10 @@ const { Router } = require('express');
 const Note = require('../../database/models/note.js');
 
 const router = Router();
+
+router.get('/', (req, res) => {
+  res.send('<h1>hello world</h1>');
+});
 // get all notes
 router.get('/notes', (req, res) => {
   Note.find({}).then(notes => {
