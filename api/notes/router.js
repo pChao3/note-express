@@ -1,25 +1,16 @@
-const express = require('express');
-const cors = require('cors');
-const Note = require('./models/note.js');
+const { Router } = require('express');
+const Note = require('../../database/models/note.js');
 
-const app = express();
-app.use(express.json());
-
-app.use(cors());
-
-app.get('/', (req, res) => {
-  res.send('<h1>hello world</h1>');
-});
-
+const router = Router();
 // get all notes
-app.get('/api/notes', (req, res) => {
+router.get('/notes', (req, res) => {
   Note.find({}).then(notes => {
     res.json(notes);
   });
 });
 
 // search tagert note
-app.get('/api/notes/:id', async (req, res) => {
+router.get('/notes/:id', async (req, res) => {
   const id = req.params.id;
   const item = await Note.find({ _id: id });
   if (item) {
@@ -30,7 +21,7 @@ app.get('/api/notes/:id', async (req, res) => {
 });
 
 // add note
-app.post('/api/notes', async (req, res) => {
+router.post('/notes', async (req, res) => {
   const data = req.body;
   if (!data.content) {
     return res.status(400).json({ error: 'content is empty' });
@@ -43,23 +34,20 @@ app.post('/api/notes', async (req, res) => {
 });
 
 // delete note
-app.delete('/api/notes/:id', async (req, res) => {
+router.delete('/notes/:id', async (req, res) => {
   const id = req.params.id;
   await Note.findByIdAndDelete(id);
   res.status(200).json({ isDeleted: true, msg: 'delete successed' });
 });
 
 // update note
-app.put('/api/notes/:id', async (req, res) => {
+router.put('/notes/:id', async (req, res) => {
   const id = req.params.id;
   const item = await Note.find({ _id: id });
   console.log('item', item[0]);
-
   item[0].important = !item[0].important;
   await Note.findByIdAndUpdate(id, item[0]);
   res.status(200).json({ status: true, msg: 'makepoint successed' });
 });
 
-app.listen(3000, () => {
-  console.log('server run at http://localhost:3000');
-});
+module.exports = router;
