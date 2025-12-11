@@ -31,5 +31,4 @@ app.listen(3000, () => {
   console.log('start!!');
 });
 
-// module.exports = serverless({ app });
-module.exports = app;
+module.exports = serverless({ app });
