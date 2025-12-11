@@ -3,18 +3,15 @@ const Note = require('../../database/models/note.js');
 
 const router = Router();
 
-router.get('/', (req, res) => {
-  res.send('<h1>hello world</h1>');
-});
 // get all notes
-router.get('/notes', (req, res) => {
+router.get('/', (req, res) => {
   Note.find({}).then(notes => {
     res.json(notes);
   });
 });
 
 // search tagert note
-router.get('/notes/:id', async (req, res) => {
+router.get('/:id', async (req, res) => {
   const id = req.params.id;
   const item = await Note.find({ _id: id });
   if (item) {
@@ -25,7 +22,7 @@ router.get('/notes/:id', async (req, res) => {
 });
 
 // add note
-router.post('/notes', async (req, res) => {
+router.post('/', async (req, res) => {
   const data = req.body;
   if (!data.content) {
     return res.status(400).json({ error: 'content is empty' });
@@ -38,14 +35,14 @@ router.post('/notes', async (req, res) => {
 });
 
 // delete note
-router.delete('/notes/:id', async (req, res) => {
+router.delete('/:id', async (req, res) => {
   const id = req.params.id;
   await Note.findByIdAndDelete(id);
   res.status(200).json({ isDeleted: true, msg: 'delete successed' });
 });
 
 // update note
-router.put('/notes/:id', async (req, res) => {
+router.put('/:id', async (req, res) => {
   const id = req.params.id;
   const item = await Note.find({ _id: id });
   console.log('item', item[0]);

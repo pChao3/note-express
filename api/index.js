@@ -17,8 +17,8 @@ app.use(express.json());
 
 // 挂载路由（推荐用 index 自动注册）
 // app.use('/api/auth', require('./api/auth/auth.router').default);
-app.use('/', users);
-app.use('/api', notes);
+app.use('/api/users', users);
+app.use('/api/notes', notes);
 
 // 404 + 统一错误处理要放在最后
 // app.use('/', (req, res) => res.status(404).json({ message: 'Not Found' }));
