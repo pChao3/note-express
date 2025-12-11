@@ -1,2 +1,4 @@
 const app = require('./api/index');
-module.exports = app;
+const serverless = require('@vendia/serverless-express');
+
+module.exports = serverless({ app });
