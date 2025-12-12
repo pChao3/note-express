@@ -4,6 +4,7 @@ const noteSchema = new mongoose.Schema({
   content: String,
   important: Boolean,
   ownerId: String,
+  createTime: { type: Date, default: Date.now() },
 });
 
 noteSchema.set('toJSON', {
