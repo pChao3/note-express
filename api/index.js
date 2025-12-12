@@ -1,15 +1,15 @@
-// src/app.ts
-require('dotenv').config();
-const express = require('express');
-const helmet = require('helmet');
-const cors = require('cors');
-const morgan = require('morgan');
-const connectDB = require('../database/dbconnect');
-const errorHandler = require('../middleware/errorHandler');
-const auth = require('../middleware/auth');
+import 'dotenv/config';
+import express from 'express';
+import helmet from 'helmet';
+import cors from 'cors';
+import morgan from 'morgan';
+import connectDB from '../database/dbconnect.js';
+import errorHandler from '../middleware/errorHandler.js';
+import auth from '../middleware/auth.js';
 
-const notes = require('./notes/router');
-const users = require('./users/router');
+import notes from './notes/router.js';
+import users from './users/router.js';
+
 connectDB();
 const app = express();
 
@@ -29,4 +29,4 @@ app.use(errorHandler);
 app.listen(3000, () => {
   console.log('start!!');
 });
-module.exports = app;
+export default app;

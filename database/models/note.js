@@ -1,10 +1,10 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const noteSchema = new mongoose.Schema({
   content: String,
   important: Boolean,
   ownerId: String,
-  createTime: { type: Date, default: Date.now() },
+  createTime: { type: Date, default: Date.now },
 });
 
 noteSchema.set('toJSON', {
@@ -17,4 +17,4 @@ noteSchema.set('toJSON', {
 
 const Note = mongoose.model('Note', noteSchema);
 
-module.exports = Note;
+export default Note;

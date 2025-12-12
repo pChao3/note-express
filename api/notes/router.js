@@ -1,5 +1,5 @@
-const { Router } = require('express');
-const Note = require('../../database/models/note.js');
+import { Router } from 'express';
+import Note from '../../database/models/note.js';
 
 const router = Router();
 
@@ -64,4 +64,4 @@ router.put('/:id', async (req, res) => {
   res.status(200).json({ status: true, msg: 'makepoint successed' });
 });
 
-module.exports = router;
+export default router;
