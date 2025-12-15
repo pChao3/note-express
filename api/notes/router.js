@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import Note from '../../database/models/note.js';
+import Note from '../../database/models/newnote.js';
+import dayjs from 'dayjs';
 
 const router = Router();
 
@@ -7,11 +8,38 @@ const router = Router();
 router.get('/', (req, res) => {
   const ownerId = req.user.id;
 
-  Note.find({ ownerId }).then(notes => {
-    res.json({
-      status: 'ok',
-      data: notes,
+  Note.find({ ownerId })
+    .sort({ createTime: -1 })
+    .then(notes => {
+      res.json({
+        status: 'ok',
+        data: notes,
+      });
     });
+});
+
+// get statistic
+router.get('/statistic', async (req, res) => {
+  const ownerId = req.user.id;
+  const notes = await Note.find({ ownerId }).sort({ createTime: -1 });
+
+  const allDays = new Set();
+  let unHappy = 0;
+  let happy = 0;
+
+  notes.forEach(i => {
+    allDays.add(dayjs(i.createTime).format('YYYY-MM-DD'));
+    if (i.mood === 'happy') {
+      happy++;
+    } else {
+      unHappy++;
+    }
+  });
+  console.log(allDays.size);
+  const lastTime = notes.length > 0 ? notes[0].createTime : null;
+  res.json({
+    status: 'ok',
+    data: { mood: happy >= unHappy ? 'happy' : 'calm', actNum: allDays.size, lastTime: lastTime },
   });
 });
 
@@ -38,7 +66,7 @@ router.post('/', async (req, res) => {
   if (!data.content) {
     return res.status(400).json({ error: 'content is empty' });
   }
-  await Note.create({ content: data.content, important: data.important || false, ownerId });
+  await Note.create({ ...data, important: data.important || false, ownerId });
   res.json({
     isSaved: true,
     msg: 'save successed',
