@@ -7,13 +7,14 @@ const router = Router();
 router.post('/searchNotes', async (req, res) => {
   const ownerId = req.user.id;
   const params = req.body;
-  console.log(params);
+  const tag = params.tag;
+  delete params.tag;
   const notes = await Note.find({ ownerId, ...params });
+  const data = tag ? notes.filter(i => i.tag.includes(tag)) : notes;
   res.json({
     status: 'ok',
-    data: notes,
+    data: data,
   });
-  console.log(notes);
 });
 
 router.get('/allMonthes', async (req, res) => {
