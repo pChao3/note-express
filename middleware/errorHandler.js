@@ -1,5 +1,5 @@
 const errorHandler = (req, res, next) => {
-  console.log('errorHandler');
+  res.status(500).json({ status: 'error', message: '服务器错误' });
   next();
 };
 
