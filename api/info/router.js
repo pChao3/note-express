@@ -114,50 +114,61 @@ router.get('/statistic', async (req, res) => {
   });
 });
 
-router.get('/month-active/:month', async (req, res) => {
-  try {
-    const { month } = req.params; // 格式: "2025-12"
-    const start = dayjs(month).startOf('month').toDate();
-    const end = dayjs(month).endOf('month').toDate();
+router.post('/getNotesNum', async (req, res) => {
+  const { type, time } = req.body;
+  const start = dayjs(time).startOf(type).toDate();
+  const end = dayjs(time).endOf(type).toDate();
 
-    const stats = await Note.aggregate([
-      // 1. 筛选：当前用户 + 指定月份范围
-      {
-        $match: {
-          ownerId: req.user.id,
-          createTime: { $gte: start, $lte: end },
+  const stats = await Note.aggregate([
+    // 1. 筛选：当前用户 + 指定月份范围
+    {
+      $match: {
+        ownerId: req.user.id,
+        createTime: { $gte: start, $lte: end },
+      },
+    },
+    // 2. 分组：按日期字符串（YYYY-MM-DD）进行分组并计数
+    {
+      $group: {
+        _id: {
+          $dateToString: { format: type === 'month' ? '%Y-%m-%d' : '%Y-%m', date: '$createTime' },
         },
+        count: { $sum: 1 }, // 每一条记录记为 1
       },
-      // 2. 分组：按日期字符串（YYYY-MM-DD）进行分组并计数
-      {
-        $group: {
-          _id: {
-            $dateToString: { format: '%Y-%m-%d', date: '$createTime' },
-          },
-          count: { $sum: 1 }, // 每一条记录记为 1
-        },
-      },
-      // 3. 排序：按日期升序排列（可选）
-      {
-        $sort: { _id: 1 },
-      },
-    ]);
+    },
+    // 3. 排序：按日期升序排列（可选）
+    {
+      $sort: { _id: 1 },
+    },
+  ]);
 
-    // 格式化输出：将数据转化为更方便前端使用的对象格式
-    // 结果示例: { "2025-12-01": 2, "2025-12-05": 1 }
-    console.log(stats);
-    const result = {};
-    stats.forEach(item => {
-      result[item._id] = item.count;
-    });
-    res.json({
-      status: 'ok',
-      data: result,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ status: 'error', message: '统计失败' });
-  }
+  // 格式化输出：将数据转化为更方便前端使用的对象格式
+  // 结果示例: { "2025-12-01": 2, "2025-12-05": 1 }
+  console.log(stats);
+  const result = {};
+  stats.forEach(item => {
+    result[item._id] = item.count;
+  });
+  res.json({
+    status: 'ok',
+    data: result,
+  });
+});
+
+router.post('/getNotesByDate', async (req, res) => {
+  const { type, time } = req.body;
+  const format = type === 'month' ? type : 'day';
+
+  const start = dayjs(time).startOf(format).toDate();
+  const end = dayjs(time).endOf(format).toDate();
+  console.log(format, start, end);
+
+  const notes = await Note.find({
+    ownerId: req.user.id,
+    createTime: { $gte: start, $lte: end },
+  }).sort({ createTime: -1 });
+
+  res.json({ status: 'ok', data: notes });
 });
 
 router.get('/by-date/:date', async (req, res) => {
