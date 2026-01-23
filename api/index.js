@@ -12,6 +12,8 @@ import auth from '../middleware/auth.js';
 import notes from './notes/router.js';
 import users from './users/router.js';
 import infos from './info/router.js';
+import chat from './chat/index.js';
+
 import { fileURLToPath } from 'url';
 
 // 获取当前文件的绝对路径
@@ -31,11 +33,11 @@ app.use(cleanQueryMiddleware);
 // 开放 public 文件夹，使其可以直接通过 URL 访问
 app.use(express.static(path.join(__dirname, '../public')));
 
-// 挂载路由（推荐用 index 自动注册）
 // app.use('/api/auth', require('./api/auth/auth.router').default);
 app.use('/api/users', users);
 app.use('/api/notes', auth, notes);
 app.use('/api/infos', auth, infos);
+app.use('/chat', auth, chat);
 
 // 404 + 统一错误处理要放在最后
 // app.use('/', (req, res) => res.status(404).json({ message: 'Not Found' }));
