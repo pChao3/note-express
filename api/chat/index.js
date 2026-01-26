@@ -38,68 +38,7 @@ router.post('/completions', async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
 
   try {
-    async function getCompletion(currentMessages) {
-      const stream = await openai.chat.completions.create({
-        messages: currentMessages,
-        model: 'deepseek-chat',
-        stream: true,
-        tools,
-      });
-
-      let fullToolCalls = []; // 用于累积所有的 tool calls
-
-      for await (const chunk of stream) {
-        const delta = chunk.choices[0].delta;
-        const finishReason = chunk.choices[0].finish_reason;
-
-        // 1. 处理文本内容
-        if (delta.content) {
-          res.write(`data: ${JSON.stringify({ content: delta.content })}\n\n`);
-        }
-
-        // 2. 累积 Tool Calls 数据 (分段传输的)
-        if (delta.tool_calls) {
-          for (const toolCall of delta.tool_calls) {
-            const index = toolCall.index;
-            if (!fullToolCalls[index]) {
-              fullToolCalls[index] = { id: toolCall.id, name: '', arguments: '' };
-            }
-            if (toolCall.id) fullToolCalls[index].id = toolCall.id;
-            if (toolCall.function?.name) fullToolCalls[index].name = toolCall.function.name;
-            if (toolCall.function?.arguments)
-              fullToolCalls[index].arguments += toolCall.function.arguments;
-          }
-        }
-
-        // 3. 当 finish_reason 为 tool_calls 时，说明函数调用参数收集完毕
-        if (finishReason === 'tool_calls') {
-          // 将助手的这次函数调用意图放入上下文
-          currentMessages.push({
-            role: 'assistant',
-            tool_calls: fullToolCalls.map(tc => ({
-              id: tc.id,
-              type: 'function',
-              function: { name: tc.name, arguments: tc.arguments },
-            })),
-          });
-
-          // 执行本地函数
-          for (const tc of fullToolCalls) {
-            const result = await executeFunction(tc.name, JSON.parse(tc.arguments));
-            currentMessages.push({
-              role: 'tool',
-              tool_call_id: tc.id,
-              content: JSON.stringify(result),
-            });
-          }
-
-          // 递归调用：把执行结果传回大模型，获取最终回复
-          return getCompletion(currentMessages);
-        }
-      }
-    }
-
-    await getCompletion(messages);
+    await getCompletion(messages, res);
     res.write('data: [DONE]\n\n');
   } catch (error) {
     console.error('Streaming Error:', error);
@@ -108,6 +47,67 @@ router.post('/completions', async (req, res) => {
     res.end();
   }
 });
+
+async function getCompletion(currentMessages, res) {
+  const stream = await openai.chat.completions.create({
+    messages: currentMessages,
+    model: 'deepseek-chat',
+    stream: true,
+    tools,
+  });
+
+  let fullToolCalls = []; // 用于累积所有的 tool calls
+
+  for await (const chunk of stream) {
+    const delta = chunk.choices[0].delta;
+    const finishReason = chunk.choices[0].finish_reason;
+
+    // 1. 处理文本内容
+    if (delta.content) {
+      res.write(`data: ${JSON.stringify({ content: delta.content })}\n\n`);
+    }
+
+    // 2. 累积 Tool Calls 数据 (分段传输的)
+    if (delta.tool_calls) {
+      for (const toolCall of delta.tool_calls) {
+        const index = toolCall.index;
+        if (!fullToolCalls[index]) {
+          fullToolCalls[index] = { id: toolCall.id, name: '', arguments: '' };
+        }
+        if (toolCall.id) fullToolCalls[index].id = toolCall.id;
+        if (toolCall.function?.name) fullToolCalls[index].name = toolCall.function.name;
+        if (toolCall.function?.arguments)
+          fullToolCalls[index].arguments += toolCall.function.arguments;
+      }
+    }
+
+    // 3. 当 finish_reason 为 tool_calls 时，说明函数调用参数收集完毕
+    if (finishReason === 'tool_calls') {
+      // 将助手的这次函数调用意图放入上下文
+      currentMessages.push({
+        role: 'assistant',
+        tool_calls: fullToolCalls.map(tc => ({
+          id: tc.id,
+          type: 'function',
+          function: { name: tc.name, arguments: tc.arguments },
+        })),
+      });
+
+      // 执行本地函数
+      for (const tc of fullToolCalls) {
+        const result = await executeFunction(tc.name, JSON.parse(tc.arguments));
+        currentMessages.push({
+          role: 'tool',
+          tool_call_id: tc.id,
+          content: JSON.stringify(result),
+        });
+      }
+
+      // 递归调用：把执行结果传回大模型，获取最终回复
+      return getCompletion(currentMessages, res);
+    }
+  }
+}
 
 // 模拟本地函数执行
 async function executeFunction(name, args) {
