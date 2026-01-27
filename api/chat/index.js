@@ -1,34 +1,9 @@
 import { Router } from 'express';
-import multer from 'multer';
-import fs from 'fs';
-import { openai, tools } from './config.js';
-import { get_weather } from './config.js';
-
-const upload = multer({ dest: 'uploads/' });
+import { readFileSync } from 'fs';
+import { openai, tools, get_weather, ANALYSIS_PROMPT } from './config.js';
 
 const router = new Router();
 
-// router.post('/completions1', async (req, res) => {
-//   const { messages } = req.body;
-//   const data = await openai.chat.completions.create({
-//     messages,
-//     model: 'deepseek-chat',
-//     stream: true,
-//     tools,
-//   });
-//   res.set('Content-Type', 'text/event-stream');
-//   res.set('Cache-Control', 'no-cache');
-//   res.set('Connection', 'keep-alive');
-//   for await (const chunk of data) {
-//     const delta = chunk.choices[0].delta;
-//     console.log(delta.tool_calls);
-//     res.write(`data: ${JSON.stringify({ content: chunk.choices[0].delta.content })}\n\n`);
-//   }
-//   console.log('____________________-');
-
-//   res.write('data: [DONE]\n\n');
-//   res.end();
-// });
 router.post('/completions', async (req, res) => {
   const { messages } = req.body;
 
@@ -41,7 +16,6 @@ router.post('/completions', async (req, res) => {
     await getCompletion(messages, res);
     res.write('data: [DONE]\n\n');
   } catch (error) {
-    console.error('Streaming Error:', error);
     res.write(`data: ${JSON.stringify({ error: 'Internal Server Error' })}\n\n`);
   } finally {
     res.end();
@@ -51,7 +25,7 @@ router.post('/completions', async (req, res) => {
 async function getCompletion(currentMessages, res) {
   const stream = await openai.chat.completions.create({
     messages: currentMessages,
-    model: 'deepseek-chat',
+    model: 'qwen-plus',
     stream: true,
     tools,
   });
@@ -102,7 +76,6 @@ async function getCompletion(currentMessages, res) {
           content: JSON.stringify(result),
         });
       }
-
       // 递归调用：把执行结果传回大模型，获取最终回复
       return getCompletion(currentMessages, res);
     }
@@ -118,24 +91,68 @@ async function executeFunction(name, args) {
   return { status: 'success' };
 }
 
-router.post('/asr', upload.single('file'), async (req, res) => {
-  try {
-    const audioPath = req.file.path;
+const callQwenASR = async audioBase64 => {
+  // 健壮性检查：确保 Base64 是纯净的数据部分
+  const cleanBase64 = audioBase64.replace(/^data:audio\/\w+;base64,/, '');
 
-    const transcription = await openai.audio.transcriptions.create({
-      file: fs.createReadStream(audioPath),
-      model: 'gpt-4o-transcribe', // 或 whisper-1
-      language: 'zh',
+  const completion = await openai.chat.completions.create({
+    model: 'qwen3-asr-flash',
+    messages: [
+      { role: 'system', content: [{ text: '你是一个精准的语音转文字助手' }] },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'input_audio',
+            input_audio: { data: cleanBase64, format: 'webm' }, // 建议明确格式
+          },
+        ],
+      },
+    ],
+  });
+
+  const text = completion.choices[0].message.content;
+  if (!text || text.trim().length === 0) {
+    throw new Error('语音内容为空，请重试');
+  }
+  return text;
+};
+
+router.post('/asr', async (req, res) => {
+  try {
+    const { audioData } = req.body;
+    if (!audioData) {
+      return res.status(400).json({ msg: 'Missing audioData', status: 400 });
+    }
+
+    // 1. 语音转文字
+    const transcribedText = await callQwenASR(audioData);
+
+    // 2. 结构化分析 (使用 qwen-plus)
+    const analysisResponse = await openai.chat.completions.create({
+      model: 'qwen-plus',
+      messages: [
+        { role: 'system', content: ANALYSIS_PROMPT },
+        { role: 'user', content: transcribedText },
+      ],
+      response_format: { type: 'json_object' }, // 开启 JSON 模式
     });
 
-    fs.unlinkSync(audioPath);
+    // 3. 安全解析 JSON
+    const analysisResult = JSON.parse(analysisResponse.choices[0].message.content);
 
     res.json({
-      text: transcription.text,
+      msg: 'ok',
+      status: 200,
+      text: transcribedText,
+      data: analysisResult,
     });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'ASR failed' });
+  } catch (error) {
+    console.error('[ASR Error]:', error);
+    res.json({
+      msg: error.message || 'Internal Server Error',
+      status: 500,
+    });
   }
 });
 export default router;

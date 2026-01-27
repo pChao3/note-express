@@ -3,8 +3,10 @@ import OpenAI from 'openai';
 
 dotenv.config({ path: '../../.env' });
 export const openai = new OpenAI({
-  baseURL: 'https://api.deepseek.com',
-  apiKey: process.env.DEEPSEEK_API_KEY,
+  //   baseURL: 'https://api.deepseek.com',
+  //   apiKey: process.env.DEEPSEEK_API_KEY,
+  apiKey: process.env.DASHSCOPE_API_KEY,
+  baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
 });
 export const tools = [
   {
@@ -33,3 +35,18 @@ export const get_weather = async cityName => {
   console.log('res', res);
   return res;
 };
+
+// 抽取 Prompt 模板，便于维护
+export const ANALYSIS_PROMPT = `你是一个专业的文字总结情感分析师。
+请直接分析提供的文字，并以 JSON 格式输出。
+请你站在我的角度去对这些吐槽字段进行总结概括.
+不要使用“描述了”、“这是一段”等总结性词汇。
+心情（mood）仅限：happy 或 calm。
+
+输出 JSON 结构：
+{
+  "mood": "happy/calm",
+  "title": "5-10字的简短标题",
+  "tag": "核心关键词",
+  "content": "概括总结"
+}`;
