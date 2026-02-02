@@ -1,11 +1,11 @@
 import { Router } from 'express';
-import { readFileSync } from 'fs';
-import { openai, tools, get_weather, ANALYSIS_PROMPT } from './config.js';
+import { openai, tools, get_weather, ANALYSIS_PROMPT, ARG_PROMPT } from './config.js';
+import { searchSimilar } from './utils.js';
 
 const router = new Router();
 
 router.post('/completions', async (req, res) => {
-  const { messages } = req.body;
+  const { messages, askARG } = req.body;
 
   // 设置 SSE 响应头
   res.setHeader('Content-Type', 'text/event-stream');
@@ -13,7 +13,21 @@ router.post('/completions', async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
 
   try {
-    await getCompletion(messages, res);
+    let msg = messages;
+    if (askARG) {
+      const mesg = msg[msg.length - 1].content;
+      const res = await searchSimilar(mesg);
+      //
+      if (res[0].score >= 0.75) {
+        const prompt = `
+             已知资料：${JSON.stringify(res)}
+            基于资料回答问题，不要编造。
+            问题：${mesg}
+            `;
+        msg = [...msg, { role: 'user', content: prompt }];
+      }
+    }
+    await getCompletion(msg, res);
     res.write('data: [DONE]\n\n');
   } catch (error) {
     res.write(`data: ${JSON.stringify({ error: 'Internal Server Error' })}\n\n`);
@@ -155,4 +169,11 @@ router.post('/asr', async (req, res) => {
     });
   }
 });
+
+// router.post('/askARG',async(req,res)=>{
+//   const {content} = req.body;
+//   const docs = await searchSimilar(content);
+//   const context = docs.map(d => d.content).join("\n");
+//   console.log(context)
+// })
 export default router;

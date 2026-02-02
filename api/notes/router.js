@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import Note from '../../database/models/newnote.js';
 import dayjs from 'dayjs';
+import embed from '../chat/embedding.js';
 
 const router = Router();
 
@@ -66,7 +67,9 @@ router.post('/', async (req, res) => {
   if (!data.content) {
     return res.status(400).json({ error: 'content is empty' });
   }
-  await Note.create({ ...data, important: data.important || false, ownerId });
+  const info = { ...data, important: data.important || false, ownerId };
+  const embedding = await embed(JSON.stringify(info));
+  await Note.create({ ...info, embedding });
   res.json({
     isSaved: true,
     msg: 'save successed',
@@ -83,13 +86,11 @@ router.delete('/:id', async (req, res) => {
 
 // update note
 router.put('/:id', async (req, res) => {
-  const ownerId = req.user.id;
+  const data = req.body;
   const id = req.params.id;
-  const item = await Note.find({ _id: id, ownerId });
-  console.log('item', item[0]);
-  item[0].important = !item[0].important;
-  await Note.findByIdAndUpdate(id, item[0]);
-  res.status(200).json({ status: true, msg: 'makepoint successed' });
+  const embedding = await embed(JSON.stringify(data));
+  await Note.findByIdAndUpdate(id, { ...data, embedding: embedding });
+  res.status(200).json({ status: true, msg: 'change successed' });
 });
 
 export default router;

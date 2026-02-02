@@ -47,9 +47,31 @@
 
 ---
 
+## 📚 知识库增强 (RAG 实现)
+
+为了提升笔记生成的专业度与上下文关联性，本项目集成了 **RAG (Retrieval-Augmented Generation)** 机制。当用户输入内容涉及特定知识领域时，系统会自动检索本地知识库进行补充。
+
+### 1. 文档处理流水线
+
+- **分割 (Chunking)**：采用递归字符分割器（Recursive Character Text Splitter），根据语义结构将原始文档拆分为 500-1000 字符的片段，并保持一定的重叠度（Overlap），确保上下文完整。
+- **矢量化 (Embedding)**：使用阿里云 DashScope 的 **text-embedding-v4** 模型。该模型具有极高的语义捕捉能力，能将文本片段转化为高维向量。
+- **存储**: 向量数据存储于轻量级向量数据库中，支持高效的空间检索。
+
+### 2. 检索与决策逻辑
+
+- **语义匹配**: 系统将用户输入的原始文本（Raw Text）同样通过 `text-embedding-v4` 转化为查询向量。
+- **最大相似度判断**:
+  - 计算查询向量与知识库中各片段向量的 **余弦相似度 (Cosine Similarity)**。
+  - **阈值过滤**: 设置相似度阈值（如 `> 0.75`）。
+  - **决策**: 若最大相似度超过阈值，系统将提取前 $K$ 个相关片段，作为背景知识（Context）注入到 Prompt 模板中；若未达到阈值，则仅根据文本内容进行总结。
+
+  ### 3. 增强后的 Prompt 结构
+  - 当触发 RAG 时，再将查询到的数据和问题写入Propmpt 发送给 `qwen-plus`进行总结输出。
+
 ## 🛠 技术栈
 
 - **核心框架**: Node.js / Express
 - **语音识别 (ASR)**: 阿里云 DashScope `qwen3-asr-flash`
 - **语义分析 (LLM)**: 阿里云 DashScope `qwen-plus`
-- **数据格式**: JSON (Base64 传输)
+- **向量模型 (Embedding)**: 阿里云 DashScope `text-embedding-v4`
+- **数据格式**: JSON / Vector
