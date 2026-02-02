@@ -4,7 +4,6 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
-import connectDB from '../database/dbconnect.js';
 import errorHandler from '../middleware/errorHandler.js';
 import cleanQueryMiddleware from '../middleware/cleanQuery.js';
 import auth from '../middleware/auth.js';
@@ -22,7 +21,6 @@ const __filename = fileURLToPath(import.meta.url);
 // 获取当前文件所在的目录路径
 const __dirname = path.dirname(__filename);
 
-connectDB();
 const app = express();
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));

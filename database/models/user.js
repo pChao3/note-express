@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import db from '../dbconnect.js';
 
 const userSchema = new mongoose.Schema({
   username: String,
@@ -16,6 +17,6 @@ userSchema.set('toJSON', {
   },
 });
 
-const User = mongoose.model('User', userSchema);
+const User = db.model('User', userSchema);
 
 export default User;

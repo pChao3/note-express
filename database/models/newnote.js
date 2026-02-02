@@ -1,4 +1,6 @@
 import mongoose from 'mongoose';
+import db from '../dbconnect.js';
+
 const noteSchema = new mongoose.Schema({
   title: String,
   weather: String,
@@ -18,6 +20,6 @@ noteSchema.set('toJSON', {
   },
 });
 
-const NewNote = mongoose.model('NewNote', noteSchema);
+const NewNote = db.model('NewNote', noteSchema);
 
 export default NewNote;
