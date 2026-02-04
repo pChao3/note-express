@@ -1,6 +1,7 @@
 // src/utils/splitter.js
 import embed from './embedding.js';
 import NewNote from '../../database/models/newnote.js';
+import reranked from './rerank.js';
 
 export function splitText(text, size = 20, overlap = 5) {
   const chunks = [];
@@ -15,9 +16,9 @@ export function splitText(text, size = 20, overlap = 5) {
 }
 
 // 根据输入查询相似度的矢量数据
-export const searchSimilar = async (content, k = 4) => {
+export const searchSimilar = async (query, k = 10) => {
   // 将输入转为矢量数据
-  const queryEmbedding = await embed(content);
+  const queryEmbedding = await embed(query);
   const results = await NewNote.aggregate([
     {
       $vectorSearch: {
@@ -36,11 +37,16 @@ export const searchSimilar = async (content, k = 4) => {
         createTime: 1,
         weather: 1,
         content: 1,
-        score: { $meta: 'vectorSearchScore' },
       },
     },
   ]);
 
-  console.log('results', results);
-  return results;
+  const rankList = await reranked(query, results);
+  const highScore = rankList.reduce((prev, cur) => {
+    if (cur.relevance_score >= 0.75) {
+      prev.push(results[cur.index]);
+    }
+    return prev;
+  }, []);
+  return highScore;
 };

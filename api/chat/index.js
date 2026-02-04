@@ -18,7 +18,7 @@ router.post('/completions', async (req, res) => {
       const mesg = msg[msg.length - 1].content;
       const res = await searchSimilar(mesg);
       //
-      if (res[0].score >= 0.75) {
+      if (res.length) {
         const prompt = `
              已知资料：${JSON.stringify(res)}
             基于资料回答问题，不要编造。

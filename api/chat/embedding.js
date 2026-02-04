@@ -4,7 +4,6 @@ const embed = async text => {
     input: text,
     model: 'text-embedding-v4',
   });
-  console.log('completion', completion.data[0].embedding);
   return completion.data[0].embedding;
 };
 
