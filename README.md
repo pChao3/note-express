@@ -62,6 +62,8 @@
 - **语义匹配**: 系统将用户输入的原始文本（Raw Text）同样通过 `text-embedding-v4` 转化为查询向量。
 - **最大相似度判断**:
   - 计算查询向量与知识库中各片段向量的 **余弦相似度 (Cosine Similarity)**。
+  - 向量数据库**召回**数据。
+  - **重排**: 利用模型 `qwen3-rerank`进行二次精度排序。
   - **阈值过滤**: 设置相似度阈值（如 `> 0.75`）。
   - **决策**: 若最大相似度超过阈值，系统将提取前 $K$ 个相关片段，作为背景知识（Context）注入到 Prompt 模板中；若未达到阈值，则仅根据文本内容进行总结。
 
@@ -74,4 +76,5 @@
 - **语音识别 (ASR)**: 阿里云 DashScope `qwen3-asr-flash`
 - **语义分析 (LLM)**: 阿里云 DashScope `qwen-plus`
 - **向量模型 (Embedding)**: 阿里云 DashScope `text-embedding-v4`
+- **重排模型 (Rerank)**: 阿里云 DashScope `qwen3-rerank`
 - **数据格式**: JSON / Vector
