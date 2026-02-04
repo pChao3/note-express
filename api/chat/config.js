@@ -50,3 +50,7 @@ export const ANALYSIS_PROMPT = `你是一个专业的文字总结情感分析师
   "tag": "核心关键词",
   "content": "概括总结"
 }`;
+
+export const ARG_PROMPT = `
+
+`;
