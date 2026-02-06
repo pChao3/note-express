@@ -68,8 +68,8 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'content is empty' });
   }
   const info = { ...data, important: data.important || false, ownerId };
-  const embedding = await embed(JSON.stringify(info));
-  await Note.create({ ...info, embedding });
+  const contentEmbedding = await embed(JSON.stringify(info));
+  await Note.create({ ...info, contentEmbedding });
   res.json({
     isSaved: true,
     msg: 'save successed',
@@ -88,8 +88,8 @@ router.delete('/:id', async (req, res) => {
 router.put('/:id', async (req, res) => {
   const data = req.body;
   const id = req.params.id;
-  const embedding = await embed(JSON.stringify(data));
-  await Note.findByIdAndUpdate(id, { ...data, embedding: embedding });
+  const contentEmbedding = await embed(JSON.stringify(data));
+  await Note.findByIdAndUpdate(id, { ...data, contentEmbedding: contentEmbedding });
   res.status(200).json({ status: true, msg: 'change successed' });
 });
 

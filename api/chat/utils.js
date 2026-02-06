@@ -23,7 +23,7 @@ export const searchSimilar = async (query, k = 10) => {
     {
       $vectorSearch: {
         index: 'vector_index',
-        path: 'embedding',
+        path: 'contentEmbedding',
         queryVector: queryEmbedding,
         numCandidates: 100,
         limit: k,
