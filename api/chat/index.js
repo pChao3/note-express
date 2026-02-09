@@ -5,7 +5,7 @@ import { searchSimilar } from './utils.js';
 const router = new Router();
 
 router.post('/completions', async (req, res) => {
-  const { messages, askARG } = req.body;
+  const { messages, askRAG } = req.body;
 
   // 设置 SSE 响应头
   res.setHeader('Content-Type', 'text/event-stream');
@@ -14,7 +14,7 @@ router.post('/completions', async (req, res) => {
 
   try {
     let msg = messages;
-    if (askARG) {
+    if (askRAG) {
       const mesg = msg[msg.length - 1].content;
       const res = await searchSimilar(mesg);
       //
@@ -30,6 +30,7 @@ router.post('/completions', async (req, res) => {
     await getCompletion(msg, res);
     res.write('data: [DONE]\n\n');
   } catch (error) {
+    console.log('error', error);
     res.write(`data: ${JSON.stringify({ error: 'Internal Server Error' })}\n\n`);
   } finally {
     res.end();
@@ -170,10 +171,4 @@ router.post('/asr', async (req, res) => {
   }
 });
 
-// router.post('/askARG',async(req,res)=>{
-//   const {content} = req.body;
-//   const docs = await searchSimilar(content);
-//   const context = docs.map(d => d.content).join("\n");
-//   console.log(context)
-// })
 export default router;
