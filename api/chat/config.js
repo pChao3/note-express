@@ -8,6 +8,14 @@ export const openai = new OpenAI({
   apiKey: process.env.DASHSCOPE_API_KEY,
   baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
 });
+
+export const getQWResponse = async option => {
+  const res = await openai.chat.completions.create({
+    model: 'qwen-plus',
+    ...option,
+  });
+  return res;
+};
 export const tools = [
   {
     type: 'function',
@@ -50,7 +58,3 @@ export const ANALYSIS_PROMPT = `你是一个专业的文字总结情感分析师
   "tag": "核心关键词",
   "content": "概括总结"
 }`;
-
-export const ARG_PROMPT = `
-
-`;

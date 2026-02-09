@@ -1,5 +1,12 @@
 import { Router } from 'express';
-import { openai, tools, get_weather, ANALYSIS_PROMPT, ARG_PROMPT } from './config.js';
+import {
+  openai,
+  tools,
+  get_weather,
+  ANALYSIS_PROMPT,
+  ARG_PROMPT,
+  getQWResponse,
+} from './config.js';
 import { searchSimilar } from './utils.js';
 
 const router = new Router();
@@ -38,13 +45,7 @@ router.post('/completions', async (req, res) => {
 });
 
 async function getCompletion(currentMessages, res) {
-  const stream = await openai.chat.completions.create({
-    messages: currentMessages,
-    model: 'qwen-plus',
-    stream: true,
-    tools,
-  });
-
+  const stream = await getQWResponse({ messages: currentMessages, stream: true, tools });
   let fullToolCalls = []; // 用于累积所有的 tool calls
 
   for await (const chunk of stream) {
@@ -144,13 +145,12 @@ router.post('/asr', async (req, res) => {
     const transcribedText = await callQwenASR(audioData);
 
     // 2. 结构化分析 (使用 qwen-plus)
-    const analysisResponse = await openai.chat.completions.create({
-      model: 'qwen-plus',
+    const analysisResponse = await getQWResponse({
       messages: [
         { role: 'system', content: ANALYSIS_PROMPT },
         { role: 'user', content: transcribedText },
       ],
-      response_format: { type: 'json_object' }, // 开启 JSON 模式
+      response_format: { type: 'json_object' },
     });
 
     // 3. 安全解析 JSON
