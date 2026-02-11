@@ -4,10 +4,10 @@ import {
   tools,
   get_weather,
   ANALYSIS_PROMPT,
-  ARG_PROMPT,
+  ROUTER_PROMPT,
   getQWResponse,
 } from './config.js';
-import { searchSimilar } from './utils.js';
+import { getQueryRouter } from './utils.js';
 
 const router = new Router();
 
@@ -23,7 +23,8 @@ router.post('/completions', async (req, res) => {
     let msg = messages;
     if (askRAG) {
       const mesg = msg[msg.length - 1].content;
-      const res = await searchSimilar(mesg);
+      const res = await getQueryRouter(mesg);
+      console.log('res', res);
       //
       if (res.length) {
         const prompt = `
