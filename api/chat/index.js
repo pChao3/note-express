@@ -4,7 +4,6 @@ import {
   tools,
   get_weather,
   ANALYSIS_PROMPT,
-  ROUTER_PROMPT,
   getQWResponse,
 } from './config.js';
 import { getQueryRouter } from './utils.js';
@@ -14,31 +13,27 @@ const router = new Router();
 router.post('/completions', async (req, res) => {
   const { messages, askRAG } = req.body;
 
-  // 设置 SSE 响应头
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
 
   try {
-    let msg = messages;
-    if (askRAG) {
-      const mesg = msg[msg.length - 1].content;
-      const res = await getQueryRouter(mesg);
-      console.log('res', res);
-      //
-      if (res.length) {
-        const prompt = `
-             已知资料：${JSON.stringify(res)}
-            基于资料回答问题，不要编造。
-            问题：${mesg}
-            `;
+    let msg = [...messages];
+    if (askRAG && msg.length > 0) {
+      const userMessage = msg[msg.length - 1].content;
+      const ragResults = await getQueryRouter(userMessage);
+
+      if (ragResults.length) {
+        const prompt = `已知资料：${JSON.stringify(ragResults)}
+基于资料回答问题，不要编造。
+问题：${userMessage}`;
         msg = [...msg, { role: 'user', content: prompt }];
       }
     }
     await getCompletion(msg, res);
     res.write('data: [DONE]\n\n');
   } catch (error) {
-    console.log('error', error);
+    console.error('Completion error:', error.message);
     res.write(`data: ${JSON.stringify({ error: 'Internal Server Error' })}\n\n`);
   } finally {
     res.end();
@@ -47,18 +42,16 @@ router.post('/completions', async (req, res) => {
 
 async function getCompletion(currentMessages, res) {
   const stream = await getQWResponse({ messages: currentMessages, stream: true, tools });
-  let fullToolCalls = []; // 用于累积所有的 tool calls
+  const fullToolCalls = [];
 
   for await (const chunk of stream) {
     const delta = chunk.choices[0].delta;
     const finishReason = chunk.choices[0].finish_reason;
 
-    // 1. 处理文本内容
     if (delta.content) {
       res.write(`data: ${JSON.stringify({ content: delta.content })}\n\n`);
     }
 
-    // 2. 累积 Tool Calls 数据 (分段传输的)
     if (delta.tool_calls) {
       for (const toolCall of delta.tool_calls) {
         const index = toolCall.index;
@@ -67,14 +60,13 @@ async function getCompletion(currentMessages, res) {
         }
         if (toolCall.id) fullToolCalls[index].id = toolCall.id;
         if (toolCall.function?.name) fullToolCalls[index].name = toolCall.function.name;
-        if (toolCall.function?.arguments)
+        if (toolCall.function?.arguments) {
           fullToolCalls[index].arguments += toolCall.function.arguments;
+        }
       }
     }
 
-    // 3. 当 finish_reason 为 tool_calls 时，说明函数调用参数收集完毕
     if (finishReason === 'tool_calls') {
-      // 将助手的这次函数调用意图放入上下文
       currentMessages.push({
         role: 'assistant',
         tool_calls: fullToolCalls.map(tc => ({
@@ -84,7 +76,6 @@ async function getCompletion(currentMessages, res) {
         })),
       });
 
-      // 执行本地函数
       for (const tc of fullToolCalls) {
         const result = await executeFunction(tc.name, JSON.parse(tc.arguments));
         currentMessages.push({
@@ -93,15 +84,12 @@ async function getCompletion(currentMessages, res) {
           content: JSON.stringify(result),
         });
       }
-      // 递归调用：把执行结果传回大模型，获取最终回复
       return getCompletion(currentMessages, res);
     }
   }
 }
 
-// 模拟本地函数执行
 async function executeFunction(name, args) {
-  // 根据 config.js 里的 tools 定义进行逻辑匹配
   if (name === 'get_weather') {
     return await get_weather(args.location);
   }
@@ -109,7 +97,6 @@ async function executeFunction(name, args) {
 }
 
 const callQwenASR = async audioBase64 => {
-  // 健壮性检查：确保 Base64 是纯净的数据部分
   const cleanBase64 = audioBase64.replace(/^data:audio\/\w+;base64,/, '');
 
   const completion = await openai.chat.completions.create({
@@ -121,7 +108,7 @@ const callQwenASR = async audioBase64 => {
         content: [
           {
             type: 'input_audio',
-            input_audio: { data: cleanBase64, format: 'webm' }, // 建议明确格式
+            input_audio: { data: cleanBase64, format: 'webm' },
           },
         ],
       },
@@ -142,10 +129,8 @@ router.post('/asr', async (req, res) => {
       return res.status(400).json({ msg: 'Missing audioData', status: 400 });
     }
 
-    // 1. 语音转文字
     const transcribedText = await callQwenASR(audioData);
 
-    // 2. 结构化分析 (使用 qwen-plus)
     const analysisResponse = await getQWResponse({
       messages: [
         { role: 'system', content: ANALYSIS_PROMPT },
@@ -154,7 +139,6 @@ router.post('/asr', async (req, res) => {
       response_format: { type: 'json_object' },
     });
 
-    // 3. 安全解析 JSON
     const analysisResult = JSON.parse(analysisResponse.choices[0].message.content);
 
     res.json({
@@ -164,8 +148,8 @@ router.post('/asr', async (req, res) => {
       data: analysisResult,
     });
   } catch (error) {
-    console.error('[ASR Error]:', error);
-    res.json({
+    console.error('[ASR Error]:', error.message);
+    res.status(500).json({
       msg: error.message || 'Internal Server Error',
       status: 500,
     });

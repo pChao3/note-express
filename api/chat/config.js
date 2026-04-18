@@ -1,10 +1,7 @@
-import dotenv from 'dotenv';
+import 'dotenv/config';
 import OpenAI from 'openai';
 
-dotenv.config({ path: '../../.env' });
 export const openai = new OpenAI({
-  //   baseURL: 'https://api.deepseek.com',
-  //   apiKey: process.env.DEEPSEEK_API_KEY,
   apiKey: process.env.DASHSCOPE_API_KEY,
   baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
 });

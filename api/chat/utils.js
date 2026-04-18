@@ -1,4 +1,3 @@
-// src/utils/splitter.js
 import embed from './embedding.js';
 import NewNote from '../../database/models/newnote.js';
 import reranked from './rerank.js';
@@ -16,35 +15,39 @@ export function splitText(text, size = 20, overlap = 5) {
   return chunks;
 }
 
-// define query intent router
 export const getQueryRouter = async query => {
-  const res = await getQWResponse({
-    messages: [
-      { role: 'system', content: ROUTER_PROMPT },
-      { role: 'user', content: query },
-    ],
-    response_format: { type: 'json_object' },
-  });
+  try {
+    const res = await getQWResponse({
+      messages: [
+        { role: 'system', content: ROUTER_PROMPT },
+        { role: 'user', content: query },
+      ],
+      response_format: { type: 'json_object' },
+    });
 
-  let results;
-  const router = JSON.parse(res.choices[0].message.content);
-  console.log('router', router);
-  if (router.searchType === 'filter') {
-    results = await NewNote.find(router.filters, { contentEmbedding: 0, __v: 0 });
+    const router = JSON.parse(res.choices[0].message.content);
+    let results = [];
+    console.log('router',router)
+
+    if (router.searchType === 'filter') {
+      results = await NewNote.find(router.filters, { contentEmbedding: 0, __v: 0 });
+    }
+
+    if (router.searchType === 'vector') {
+      results = await searchSimilar(query, router.embeddingTarget);
+    }
+
+    return results;
+  } catch (error) {
+    console.error('Query router error:', error.message);
+    return [];
   }
-
-  if (router.searchType === 'vector') {
-    results = await searchSimilar(query, router.embeddingTarget);
-  }
-  // todo: hybrid
-
-  return results;
 };
 
-// 根据输入查询相似度的矢量数据
 export const searchSimilar = async (query, path, k = 10) => {
-  // 将输入转为矢量数据
   const queryEmbedding = await embed(query);
+  console.log('[Vector Search] path:', path, 'queryEmbedding length:', queryEmbedding?.length);
+
   const results = await NewNote.aggregate([
     {
       $vectorSearch: {
@@ -63,19 +66,21 @@ export const searchSimilar = async (query, path, k = 10) => {
         createTime: 1,
         weather: 1,
         content: 1,
-        similarityScore: { $meta: 'vectorSearchScore' }, // 获取相似度分数
+        similarityScore: { $meta: 'vectorSearchScore' },
       },
     },
   ]);
 
-  const rankList = await reranked(query, results);
-  console.log(results, rankList);
+  console.log('[Vector Search] results count:', results.length);
+  if (results.length === 0) {
+    return [];
+  }
 
-  const highScore = rankList.reduce((prev, cur) => {
-    if (cur.relevance_score >= 0.75) {
-      prev.push(results[cur.index]);
-    }
-    return prev;
-  }, []);
-  return highScore;
+  const rankList = await reranked(query, results);
+  console.log('[Rerank] rankList:', rankList.map(r => ({ index: r.index, score: r.relevance_score })));
+
+  const filtered = rankList.filter(item => item.relevance_score >= 0.75);
+  console.log('[Rerank] filtered count:', filtered.length);
+
+  return filtered.map(item => results[item.index]);
 };

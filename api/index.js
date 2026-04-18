@@ -4,6 +4,7 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
 import errorHandler from '../middleware/errorHandler.js';
 import cleanQueryMiddleware from '../middleware/cleanQuery.js';
 import auth from '../middleware/auth.js';
@@ -15,30 +16,33 @@ import chat from './chat/index.js';
 
 import { fileURLToPath } from 'url';
 
-// 获取当前文件的绝对路径
 const __filename = fileURLToPath(import.meta.url);
-
-// 获取当前文件所在的目录路径
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { status: 'error', message: 'Too many requests, please try again later' },
+});
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(cleanQueryMiddleware);
-// 开放 public 文件夹，使其可以直接通过 URL 访问
 app.use(express.static(path.join(__dirname, '../public')));
 
-// app.use('/api/auth', require('./api/auth/auth.router').default);
-app.use('/api/users', users);
-app.use('/api/notes', auth, notes);
-app.use('/api/infos', auth, infos);
-app.use('/chat', auth, chat);
+app.use('/api/users', limiter, users);
+app.use('/api/notes', auth, limiter, notes);
+app.use('/api/infos', auth, limiter, infos);
+app.use('/chat', auth, limiter, chat);
 
-// 404 + 统一错误处理要放在最后
-// app.use('/', (req, res) => res.status(404).json({ message: 'Not Found' }));
+app.use((req, res) => {
+  res.status(404).json({ status: 'error', message: 'Not Found' });
+});
+
 app.use(errorHandler);
 
 export default app;
