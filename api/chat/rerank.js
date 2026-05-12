@@ -1,13 +1,13 @@
 const reranked = async (query, document) => {
   try {
-    const res = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/reranks', {
+    const res = await fetch('https://dashscope.aliyuncs.com/compatible-api/v1/reranks', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${process.env.DASHSCOPE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gte-rerank',
+        model: 'qwen3-rerank',
         top_n: Math.min(document.length, 5),
         documents: document.map(i =>
           typeof i === 'string' ? i : `${i.title || ''} ${i.content || ''}`.trim()
