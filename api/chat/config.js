@@ -1,52 +1,53 @@
-import 'dotenv/config';
-import OpenAI from 'openai';
+import "dotenv/config";
+import OpenAI from "openai";
 
 export const openai = new OpenAI({
   apiKey: process.env.DASHSCOPE_API_KEY,
-  baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+  baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1"
 });
 
-export const getQWResponse = async option => {
+export const getQWResponse = async (option) => {
   const res = await openai.chat.completions.create({
-    model: 'qwen-plus',
-    ...option,
+    model: "qwen-plus",
+    ...option
   });
   return res;
 };
 export const tools = [
   {
-    type: 'function',
+    type: "function",
     function: {
-      name: 'get_weather',
-      description: '当你想查询指定城市的天气时非常有用。',
+      name: "get_weather",
+      description: "当你想查询指定城市的天气时非常有用。",
       parameters: {
-        type: 'object',
+        type: "object",
         properties: {
           location: {
-            type: 'string',
-            description: '城市或县区，比如北京市、杭州市、余杭区等。',
-          },
+            type: "string",
+            description: "城市或县区，比如北京市、杭州市、余杭区等。"
+          }
         },
-        required: ['location'],
-      },
-    },
-  },
+        required: ["location"]
+      }
+    }
+  }
 ];
 
-export const get_weather = async cityName => {
+export const get_weather = async (cityName) => {
   const res = await fetch(
     `https://api.openweathermap.org/data/2.5/weather?q=${cityName}&appid=${process.env.WEATHER_KEY}&units=metric&lang=zh_cn`
-  ).then(res => res.json());
-  console.log('res', res);
+  ).then((res) => res.json());
+  console.log("res", res);
   return res;
 };
 
 // 抽取 Prompt 模板，便于维护
 export const ANALYSIS_PROMPT = `你是一个情感与内容分析助手。
 我会给你一段语音识别转写的文字，你需要基于这段文字完成以下三件事：
-1. 判断心情（mood）：仅限 happy 或 calm
+1. 判断心情（mood）：仅限 "happy" | "calm" | "sad" | "angry"
 2. 提炼一个标题（title）：5-10字的简短标题
 3. 提炼一个标签（tag）：一个核心关键词
+4. 提炼天气信息：仅限sunny" | "rainy" | "cloudy" | "snowy" 没有的话默认sunny
 
 【重要】content 字段必须是我提供给你的原始文字，一字不改地原样复制，禁止总结、概括、改写或删减。
 
