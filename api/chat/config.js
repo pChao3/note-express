@@ -42,18 +42,20 @@ export const get_weather = async cityName => {
 };
 
 // 抽取 Prompt 模板，便于维护
-export const ANALYSIS_PROMPT = `你是一个专业的文字总结情感分析师。
-请直接分析提供的文字，并以 JSON 格式输出。
-请你站在我的角度去对这些吐槽字段进行总结概括.
-不要使用“描述了”、“这是一段”等总结性词汇。
-心情（mood）仅限：happy 或 calm。
+export const ANALYSIS_PROMPT = `你是一个情感与内容分析助手。
+我会给你一段语音识别转写的文字，你需要基于这段文字完成以下三件事：
+1. 判断心情（mood）：仅限 happy 或 calm
+2. 提炼一个标题（title）：5-10字的简短标题
+3. 提炼一个标签（tag）：一个核心关键词
 
-输出 JSON 结构：
+【重要】content 字段必须是我提供给你的原始文字，一字不改地原样复制，禁止总结、概括、改写或删减。
+
+以 JSON 格式输出，不要输出任何其他内容：
 {
-  "mood": "happy/calm",
-  "title": "5-10字的简短标题",
+  "mood": "happy 或 calm",
+  "title": "5-10字的标题",
   "tag": "核心关键词",
-  "content": "概括总结"
+  "content": "原始输入文字（原样复制，不做任何修改）"
 }`;
 
 export const ROUTER_PROMPT = `
@@ -73,8 +75,8 @@ export const ROUTER_PROMPT = `
   ## 请根据用户输入语义来判断输出格式
 
   检索策略定义：
-   filter: 仅当用户只关心属性（如“所有的晴天日记”）时使用。
-   vector: 仅当用户描述抽象感受或具体事件（如“关于遗憾的回忆”）且未提天气/心情时使用。
+   filter: 仅当用户只关心属性（如"所有的晴天日记"）时使用。
+   vector: 仅当用户描述抽象感受或具体事件（如"关于遗憾的回忆"）且未提天气/心情时使用。
    hybrid: 用户既指定了属性又描述了内容时使用。
 
   请输出 JSON，不要解释。
