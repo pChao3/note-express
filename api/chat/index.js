@@ -23,10 +23,19 @@ router.post('/completions', async (req, res) => {
 
     if (askRAG && msg.length > 0) {
       const userMessage = msg[msg.length - 1].content;
-      const ragResults = await getQueryRouter(userMessage);
+      console.log('[RAG] mode ON, query:', userMessage);
+
+      let ragResults = [];
+      try {
+        ragResults = await getQueryRouter(userMessage);
+      } catch (ragErr) {
+        // RAG 失败时降级为普通回答，打印完整错误便于排查
+        console.error('[RAG] getQueryRouter failed:', ragErr);
+      }
+
+      console.log('[RAG] results count:', ragResults.length);
 
       if (ragResults.length > 0) {
-        // 格式化日记片段，让 LLM 更容易理解结构
         const formattedDiaries = ragResults
           .map((item, idx) => {
             const date = item.createTime
@@ -45,27 +54,36 @@ router.post('/completions', async (req, res) => {
           })
           .join('\n\n');
 
-        // 注入 system 角色（若不存在）+ RAG 上下文替换最后一条 user 消息
+        console.log('[RAG] formatted context (first 200 chars):', formattedDiaries.slice(0, 200));
+
+        // 注入 system 角色（若不存在）
         const hasSystem = msg[0]?.role === 'system';
         if (!hasSystem) {
           msg = [{ role: 'system', content: RAG_SYSTEM_PROMPT }, ...msg];
         }
 
-        // 将最后一条用户消息替换为带上下文的版本
-        const lastUserIdx = msg.findLastIndex(m => m.role === 'user');
+        // 找到最后一条 user 消息（兼容旧版 Node 不支持 findLastIndex）
+        let lastUserIdx = -1;
+        for (let i = msg.length - 1; i >= 0; i--) {
+          if (msg[i].role === 'user') { lastUserIdx = i; break; }
+        }
+
         if (lastUserIdx !== -1) {
           msg[lastUserIdx] = {
             role: 'user',
             content: `以下是与问题相关的日记片段：\n\n${formattedDiaries}\n\n---\n用户问题：${userMessage}`,
           };
+          console.log('[RAG] injected context into message index', lastUserIdx);
         }
+      } else {
+        console.log('[RAG] no results found, falling back to normal response');
       }
     }
 
     await getCompletion(msg, res);
     res.write('data: [DONE]\n\n');
   } catch (error) {
-    console.error('Completion error:', error.message);
+    console.error('[Completion] error:', error);
     res.write(`data: ${JSON.stringify({ error: 'Internal Server Error' })}\n\n`);
   } finally {
     res.end();
