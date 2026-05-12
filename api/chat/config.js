@@ -42,17 +42,20 @@ export const get_weather = async cityName => {
 };
 
 // 抽取 Prompt 模板，便于维护
-export const ANALYSIS_PROMPT = `你是一个专业的情感分析师。
-请直接分析提供的文字，并以 JSON 格式输出。
-不要对 content 进行任何总结、改写或概括，将用户输入的原文原封不动地作为 content 输出。
-心情（mood）仅限：happy 或 calm。
+export const ANALYSIS_PROMPT = `你是一个情感与内容分析助手。
+我会给你一段语音识别转写的文字，你需要基于这段文字完成以下三件事：
+1. 判断心情（mood）：仅限 happy 或 calm
+2. 提炼一个标题（title）：5-10字的简短标题
+3. 提炼一个标签（tag）：一个核心关键词
 
-输出 JSON 结构：
+【重要】content 字段必须是我提供给你的原始文字，一字不改地原样复制，禁止总结、概括、改写或删减。
+
+以 JSON 格式输出，不要输出任何其他内容：
 {
-  "mood": "happy/calm",
-  "title": "5-10字的简短标题",
+  "mood": "happy 或 calm",
+  "title": "5-10字的标题",
   "tag": "核心关键词",
-  "content": "用户输入的原始文字，不做任何修改"
+  "content": "原始输入文字（原样复制，不做任何修改）"
 }`;
 
 export const ROUTER_PROMPT = `
