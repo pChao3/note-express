@@ -4,6 +4,7 @@ import {
   tools,
   get_weather,
   ANALYSIS_PROMPT,
+  RAG_SYSTEM_PROMPT,
   getQWResponse,
 } from './config.js';
 import { getQueryRouter } from './utils.js';
@@ -19,17 +20,48 @@ router.post('/completions', async (req, res) => {
 
   try {
     let msg = [...messages];
+
     if (askRAG && msg.length > 0) {
       const userMessage = msg[msg.length - 1].content;
       const ragResults = await getQueryRouter(userMessage);
 
-      if (ragResults.length) {
-        const prompt = `已知资料：${JSON.stringify(ragResults)}
-基于资料回答问题，不要编造。
-问题：${userMessage}`;
-        msg = [...msg, { role: 'user', content: prompt }];
+      if (ragResults.length > 0) {
+        // 格式化日记片段，让 LLM 更容易理解结构
+        const formattedDiaries = ragResults
+          .map((item, idx) => {
+            const date = item.createTime
+              ? new Date(item.createTime).toLocaleDateString('zh-CN')
+              : '未知日期';
+            const parts = [
+              `【日记 ${idx + 1}】`,
+              `时间：${date}`,
+              item.title ? `标题：${item.title}` : null,
+              item.mood ? `心情：${item.mood}` : null,
+              item.weather ? `天气：${item.weather}` : null,
+              item.tag ? `标签：${item.tag}` : null,
+              `内容：${item.content}`,
+            ].filter(Boolean);
+            return parts.join('\n');
+          })
+          .join('\n\n');
+
+        // 注入 system 角色（若不存在）+ RAG 上下文替换最后一条 user 消息
+        const hasSystem = msg[0]?.role === 'system';
+        if (!hasSystem) {
+          msg = [{ role: 'system', content: RAG_SYSTEM_PROMPT }, ...msg];
+        }
+
+        // 将最后一条用户消息替换为带上下文的版本
+        const lastUserIdx = msg.findLastIndex(m => m.role === 'user');
+        if (lastUserIdx !== -1) {
+          msg[lastUserIdx] = {
+            role: 'user',
+            content: `以下是与问题相关的日记片段：\n\n${formattedDiaries}\n\n---\n用户问题：${userMessage}`,
+          };
+        }
       }
     }
+
     await getCompletion(msg, res);
     res.write('data: [DONE]\n\n');
   } catch (error) {
